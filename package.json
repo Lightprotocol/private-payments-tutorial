@@ -4,7 +4,7 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "run": "yarn ts-node src/main.ts"
+    "run": "yarn ts-node src/main.ts --exit"
   },
   "dependencies": {
     "@lightprotocol/zk.js": "^0.3.2-alpha.8"
