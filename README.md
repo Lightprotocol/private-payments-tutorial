@@ -9,8 +9,7 @@ This script is an example implementation of a shielded transfer using the Light 
 Before running this script, ensure that you have the following prerequisites:
 
 1. **Node**.js and **npm** installed on your machine.
-2. Access to a **Solana** node running locally.
-3. A **Solana** wallet file (JSON format) located at `~/.config/solana/id.json`. If the file doesn't exist, the script will generate a new wallet for testing purposes.
+2. A **Solana** wallet file (JSON format) located at `~/.config/solana/id.json`. If the file doesn't exist, the script will generate a new wallet for testing purposes.
 
 ## Installation
 
@@ -46,7 +45,7 @@ Before running the script, you may need to modify the following configuration op
 
 - `SOLANA_PORT` (default: `"8899"`): The port on which the local **Solana** node is running. If your node is running on a different port, update this value accordingly.
 - `process.env.ANCHOR_WALLET`: The path to the **Solana** wallet file. By default, it is set to `~/.config/solana/id.json`. If your wallet file is located elsewhere, modify this value accordingly.
-- `LOOK_UP_TABLE`: The lookup table used for the test relayer. Ensure it is correct for your use case.
+- `LOOK_UP_TABLE`: The lookup table used for the test relayer. If the provided lookup table doesn't exist a new one will be created.
 
 ## Run
 
@@ -61,6 +60,10 @@ or
 ```shell
 yarn run test-local
 ```
+
+The command above will start a local test validator with both Light Protocol's programs and accounts initialized.
+
+**NOTE:** `local-test` starts a **Solana** test-validator; if you want to handle a **Solana** test validator autonomously, you will need to initialize the Merkle tree and other accounts manually or using the `setMerkleTree script`;
 
 ## Overview
 

@@ -7,11 +7,11 @@ import {
   TestRelayer,
   User,
 } from "@lightprotocol/zk.js";
-const SOLANA_PORT = process.env.SOLANA_PORT || "8899";
+
 process.env.ANCHOR_WALLET = process.env.HOME + "/.config/solana/id.json";
-process.env.ANCHOR_PROVIDER_URL = `http://127.0.0.1:${SOLANA_PORT}`;
+process.env.ANCHOR_PROVIDER_URL = "http://127.0.0.1:8899";
 const provider = anchor.AnchorProvider.local(
-  `http://127.0.0.1:${SOLANA_PORT}`,
+  "http://127.0.0.1:8899",
   confirmConfig
 );
 
