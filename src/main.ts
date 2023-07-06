@@ -1,59 +1,105 @@
-import * as light from '@lightprotocol/zk.js'
+import * as light from "@lightprotocol/zk.js";
 import * as anchor from "@coral-xyz/anchor";
-import { Account, airdropSol, confirmConfig, LOOK_UP_TABLE, TestRelayer, User } from '@lightprotocol/zk.js';
+import {
+  airdropSol,
+  confirmConfig,
+  LOOK_UP_TABLE,
+  TestRelayer,
+  User,
+} from "@lightprotocol/zk.js";
+
 process.env.ANCHOR_WALLET = process.env.HOME + "/.config/solana/id.json";
 process.env.ANCHOR_PROVIDER_URL = "http://127.0.0.1:8899";
 const provider = anchor.AnchorProvider.local(
-    "http://127.0.0.1:8899",
-    confirmConfig,
-  );
+  "http://127.0.0.1:8899",
+  confirmConfig
+);
+
+const log = console.log;
+
 const main = async () => {
-    // Replace this with your user's Solana wallet
-    const solanaWallet = anchor.web3.Keypair.generate()
+  log("initializing Solana wallet...");
+  const solanaWallet = anchor.web3.Keypair.generate(); // Replace this with your user's Solana wallet
 
-    await airdropSol({provider, amount: 2e9, recipientPublicKey: solanaWallet.publicKey});
+  log("requesting airdrop...");
+  await airdropSol({
+    provider,
+    amount: 2e9,
+    recipientPublicKey: solanaWallet.publicKey,
+  });
 
-    const testRelayer = await new TestRelayer(
-        solanaWallet.publicKey,
-        LOOK_UP_TABLE,
-        solanaWallet.publicKey,
-        new anchor.BN(100_000)
-      );
-    const lightProvider = await light.Provider.init({
-        wallet: solanaWallet,
-        relayer: testRelayer
-    });
+  log("setting-up test relayer...");
+  const testRelayer = await new TestRelayer(
+    solanaWallet.publicKey,
+    LOOK_UP_TABLE,
+    solanaWallet.publicKey,
+    new anchor.BN(100_000)
+  );
 
-    const user = await light.User.init({ provider: lightProvider });
+  log("initializing light provider...");
+  const lightProvider = await light.Provider.init({
+    wallet: solanaWallet,
+    relayer: testRelayer,
+  });
 
-    await user.shield({
-        publicAmountSol: '1',
-        token: 'SOL',
-    });
-    console.log(await user.getBalance());
+  log("initializing user...");
+  const user = await light.User.init({ provider: lightProvider });
 
-    const testRecipientKeypair = anchor.web3.Keypair.generate();
-    await airdropSol({provider, amount: 2e9, recipientPublicKey: testRecipientKeypair.publicKey});
+  log("performing shield operation...");
+  await user.shield({
+    publicAmountSol: "1",
+    token: "SOL",
+  });
 
-    const lightProviderRecipient = await light.Provider.init({
-        wallet: testRecipientKeypair,
-        relayer: testRelayer
-    });
+  log("getting user balance...");
+  log(await user.getBalance());
 
-    const testRecipient: User = await light.User.init({ provider: lightProviderRecipient });
+  log("generating test recipient keypair...");
+  const testRecipientKeypair = anchor.web3.Keypair.generate();
 
-    // Execute the transfer
-    const response = await user.transfer({
-        amountSol: '0.25',
-        token: 'SOL',
-        recipient: testRecipient.account.getPublicKey()
-    });
+  log("requesting airdprop...");
+  await airdropSol({
+    provider,
+    amount: 2e9,
+    recipientPublicKey: testRecipientKeypair.publicKey,
+  });
 
-    // We can check the transaction that gets executed on-chain and won't
-    // see any movement of tokens, whereas the recipient's private balance changed!
-    console.log(response.txHash)
-    console.log((await testRecipient.getUtxoInbox()))
-    process.exit()
-}
+  log("initializing light provider recipient...");
+  const lightProviderRecipient = await light.Provider.init({
+    wallet: testRecipientKeypair,
+    relayer: testRelayer,
+  });
 
+  log("initializing light user recipient...");
+  const testRecipient: User = await light.User.init({
+    provider: lightProviderRecipient,
+  });
+
+  log("executing transfer...");
+  const response = await user.transfer({
+    amountSol: "0.25",
+    token: "SOL",
+    recipient: testRecipient.account.getPublicKey(),
+  });
+
+  // We can check the transaction that gets executed on-chain and won't
+  // see any movement of tokens, whereas the recipient's private balance changed!
+
+  log("getting tx hash...");
+  log(response.txHash);
+  log("getting UTXO inbox...");
+  log(await testRecipient.getUtxoInbox());
+};
+
+log("running program...");
 main()
+  .then(() => {
+    log("running complete.");
+  })
+  .catch((e) => {
+    console.trace(e);
+  })
+  .finally(() => {
+    log("exiting program.");
+    process.exit(0);
+  });
