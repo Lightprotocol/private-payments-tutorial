@@ -1,4 +1,3 @@
-import * as light from "@lightprotocol/zk.js";
 import * as anchor from "@coral-xyz/anchor";
 import {
   airdropSol,
@@ -6,7 +5,14 @@ import {
   LOOK_UP_TABLE,
   TestRelayer,
   User,
+    Provider,
 } from "@lightprotocol/zk.js";
+
+import {
+  PublicKey,
+  Keypair,
+    LAMPORTS_PER_SOL
+} from "@solana/web3.js";
 
 process.env.ANCHOR_WALLET = process.env.HOME + "/.config/solana/id.json";
 process.env.ANCHOR_PROVIDER_URL = "http://127.0.0.1:8899";
@@ -18,88 +24,101 @@ const provider = anchor.AnchorProvider.local(
 const log = console.log;
 
 const main = async () => {
-  log("initializing Solana wallet...");
-  const solanaWallet = anchor.web3.Keypair.generate(); // Replace this with your user's Solana wallet
+  const logBalance = async (prefix: String, pubKey: PublicKey) => {
+    let walletBalance = await provider.connection.getBalance(pubKey);
+    console.log(`${prefix} Address: ${pubKey}, Balance: ${walletBalance / LAMPORTS_PER_SOL} SOL`);
+  }
 
-  log("requesting airdrop...");
+  const solSender = anchor.web3.Keypair.generate();
+  const solRecipient = anchor.web3.Keypair.generate();
+
   await airdropSol({
     provider,
-    amount: 2e9,
-    recipientPublicKey: solanaWallet.publicKey,
+    lamports: 2 * LAMPORTS_PER_SOL,
+    recipientPublicKey: solSender.publicKey,
   });
 
-  log("setting-up test relayer...");
-  const testRelayer = await new TestRelayer(
-    solanaWallet.publicKey,
-    LOOK_UP_TABLE,
-    solanaWallet.publicKey,
-    new anchor.BN(100_000)
+  await logBalance("Sender's", solSender.publicKey);
+  await logBalance("Recipient's", solRecipient.publicKey);
+
+  const relayerKeypair = Keypair.generate();
+  const testRelayer = new TestRelayer(
+      relayerKeypair.publicKey,
+      LOOK_UP_TABLE,
+      relayerKeypair.publicKey,
+      new anchor.BN(100000),
+      new anchor.BN(100000),
+      relayerKeypair
   );
 
-  log("initializing light provider...");
-  const lightProvider = await light.Provider.init({
-    wallet: solanaWallet,
+  const lightProvider = await Provider.init({
+    wallet: solSender,
     relayer: testRelayer,
   });
 
-  log("initializing user...");
-  const user = await light.User.init({ provider: lightProvider });
+  log("Initializing user...");
+  const lightSender = await User.init({ provider: lightProvider });
 
-  log("performing shield operation...");
-  await user.shield({
+  log("Performing shield operation...");
+  await lightSender.shield({
     publicAmountSol: "1",
     token: "SOL",
   });
 
-  log("getting user balance...");
-  log(await user.getBalance());
+  log("Getting user balance...");
+  log(await lightSender.getBalance());
 
-  log("generating test recipient keypair...");
-  const testRecipientKeypair = anchor.web3.Keypair.generate();
-
-  log("requesting airdprop...");
-  await airdropSol({
-    provider,
-    amount: 2e9,
-    recipientPublicKey: testRecipientKeypair.publicKey,
-  });
-
-  log("initializing light provider recipient...");
-  const lightProviderRecipient = await light.Provider.init({
-    wallet: testRecipientKeypair,
+  log("Initializing light provider for recipient...");
+  const lightProviderRecipient = await Provider.init({
+    wallet: solRecipient,
     relayer: testRelayer,
   });
 
-  log("initializing light user recipient...");
-  const testRecipient: User = await light.User.init({
+  log("Initializing light recipient...");
+  const lightRecipient: User = await User.init({
     provider: lightProviderRecipient,
   });
 
-  log("executing transfer...");
-  const response = await user.transfer({
+  log("Executing transfer...");
+  const response = await lightSender.transfer({
     amountSol: "0.25",
     token: "SOL",
-    recipient: testRecipient.account.getPublicKey(),
+    recipient: lightRecipient.account.getPublicKey(),
   });
 
   // We can check the transaction that gets executed on-chain and won't
   // see any movement of tokens, whereas the recipient's private balance changed!
 
-  log("getting tx hash...");
+  log("Retrieving tx hash...");
   log(response.txHash);
-  log("getting UTXO inbox...");
-  log(await testRecipient.getUtxoInbox());
+  log("Retrieving UTXO inbox...");
+  log(await lightRecipient.getUtxoInbox());
+
+  await lightRecipient.mergeAllUtxos(new PublicKey(0));
+
+  log("Recipient light balance: ");
+  log(await lightRecipient.getBalance());
+
+  await lightRecipient.unshield({
+    token: "SOL",
+    publicAmountSol: "0.24",
+    recipient: solRecipient.publicKey,
+  });
+
+
+  await logBalance("Sender's", solSender.publicKey);
+  await logBalance("Recipient's", solRecipient.publicKey);
 };
 
-log("running program...");
+log("Executing program...");
 main()
   .then(() => {
-    log("running complete.");
+    log("Execution complete.");
   })
   .catch((e) => {
     console.trace(e);
   })
   .finally(() => {
-    log("exiting program.");
+    log("Program execution ended.");
     process.exit(0);
   });
