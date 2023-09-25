@@ -4,10 +4,10 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "test-local": "./runTest.sh 'yarn ts-node src/main.ts --exit'"
+    "test-local": "yarn ts-node src/main.ts --exit"
   },
   "dependencies": {
-    "@lightprotocol/zk.js": "^0.3.2-alpha.8"
+    "@lightprotocol/zk.js": "^0.3.2-alpha.15"
   },
   "devDependencies": {
     "chai": "^4.3.4",

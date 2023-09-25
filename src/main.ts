@@ -1,9 +1,10 @@
 import * as light from "@lightprotocol/zk.js";
 import * as anchor from "@coral-xyz/anchor";
 import {
+  ADMIN_AUTH_KEYPAIR,
   airdropSol,
+  AUTHORITY_ONE,
   confirmConfig,
-  LOOK_UP_TABLE,
   TestRelayer,
   User,
 } from "@lightprotocol/zk.js";
@@ -23,23 +24,25 @@ const main = async () => {
 
   log("requesting airdrop...");
   await airdropSol({
-    provider,
-    amount: 2e9,
+    connection: provider.connection,
+    lamports: 2e9,
     recipientPublicKey: solanaWallet.publicKey,
   });
 
   log("setting-up test relayer...");
-  const testRelayer = await new TestRelayer(
-    solanaWallet.publicKey,
-    LOOK_UP_TABLE,
-    solanaWallet.publicKey,
-    new anchor.BN(100_000)
-  );
+  const testRelayer = new TestRelayer({
+    relayerPubkey: solanaWallet.publicKey,
+    relayerRecipientSol: solanaWallet.publicKey,
+    relayerFee: new anchor.BN(100_000),
+    payer: solanaWallet,
+  });
 
   log("initializing light provider...");
   const lightProvider = await light.Provider.init({
     wallet: solanaWallet,
+    connection: provider.connection,
     relayer: testRelayer,
+    confirmConfig,
   });
 
   log("initializing user...");
@@ -59,15 +62,17 @@ const main = async () => {
 
   log("requesting airdprop...");
   await airdropSol({
-    provider,
-    amount: 2e9,
+    connection: provider.connection,
+    lamports: 2e9,
     recipientPublicKey: testRecipientKeypair.publicKey,
   });
 
   log("initializing light provider recipient...");
   const lightProviderRecipient = await light.Provider.init({
     wallet: testRecipientKeypair,
+    connection: provider.connection,
     relayer: testRelayer,
+    confirmConfig,
   });
 
   log("initializing light user recipient...");
